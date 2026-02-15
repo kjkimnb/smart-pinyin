@@ -24,6 +24,10 @@ class CandidateManager:
         """
         生成候选词（支持分词和多音节输入）
 
+        优先级：
+        1. 更长的组合（更多音节）
+        2. 更高的词频
+
         Args:
             pinyin_text: 拼音输入
 
@@ -80,10 +84,12 @@ class CandidateManager:
                 if length > unique_candidates[word][1]:
                     unique_candidates[word] = (freq, length)
 
-        # 按词频排序，同词频时优先保留更长的组合
+        # 修正排序逻辑：
+        # 1. 长度优先（更长的词排在前面）
+        # 2. 词频其次（同长度按词频降序）
         sorted_candidates = sorted(
             unique_candidates.items(),
-            key=lambda x: (-x[1][0], -x[1][1])
+            key=lambda x: (-x[1][1], -x[1][0])
         )[:MAX_CANDIDATES]
 
         # 只返回(word, frequency)，去掉length信息
