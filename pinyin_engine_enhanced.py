@@ -252,7 +252,7 @@ class PinyinEngineEnhanced:
             return ""
             
         result = pinyin(text, style=style, heteronym=False)
-        pinyin_list = [item[0] for item in result if item[0]]
+        pinyin_list = [item[0] for item in result if item and len(item) > 0 and item[0]]
         return separator.join(pinyin_list)
 
     def get_pinyin_list(self, text):
@@ -269,7 +269,7 @@ class PinyinEngineEnhanced:
             return []
             
         result = pinyin(text, style=Style.NORMAL, heteronym=False)
-        return [item[0] for item in result if item[0]]
+        return [item[0] for item in result if item and len(item) > 0 and item[0]]
 
     def is_pinyin(self, text):
         """
