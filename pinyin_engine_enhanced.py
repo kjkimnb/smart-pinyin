@@ -115,7 +115,7 @@ class PinyinEngineEnhanced:
 
     def _auto_split_pinyin(self, pinyin_text: str) -> List[str]:
         """
-        自动分词 - 从后向前贪婪匹配
+        自动分词 - 从前向后贪婪匹配
         
         Args:
             pinyin_text: 连续的拼音字符串
@@ -130,7 +130,7 @@ class PinyinEngineEnhanced:
         if len(pinyin_text) <= 2:
             return [pinyin_text] if pinyin_text else []
             
-        # 从后向前匹配
+        # 从前向后匹配
         result = []
         remaining = pinyin_text
         
@@ -143,14 +143,14 @@ class PinyinEngineEnhanced:
                 
                 # 检查是否是有效的音节
                 if self._is_valid_syllable(candidate):
-                    result.insert(0, candidate)
+                    result.append(candidate)  # 添加到末尾
                     remaining = remaining[length:]
                     matched = True
                     break
             
             if not matched:
                 # 无法匹配，作为整体保留
-                result.insert(0, remaining)
+                result.append(remaining)
                 break
         
         return result
