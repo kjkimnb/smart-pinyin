@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Pinyin 输入法演示</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .demo-container {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            padding: 40px;
+            max-width: 800px;
+            width: 100%;
+        }
+
+        .editor {
+            background: #f5f5f5;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 20px;
+            min-height: 200px;
+            font-size: 16px;
+            line-height: 1.8;
+            color: #333;
+            margin-bottom: 20px;
+            position: relative;
+        }
+
+        .editor-text {
+            color: #333;
+        }
+
+        .composing {
+            color: #2196F3;
+            background: #E3F2FD;
+            padding: 2px 6px;
+            border-radius: 4px;
+            border-bottom: 2px solid #2196F3;
+        }
+
+        .input-indicator {
+            display: inline-block;
+            width: 2px;
+            height: 20px;
+            background: #2196F3;
+            animation: blink 1s infinite;
+            vertical-align: middle;
+            margin-left: 2px;
+        }
+
+        @keyframes blink {
+            0%, 50% { opacity: 1; }
+            51%, 100% { opacity: 0; }
+        }
+
+        .candidate-window {
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+            overflow: hidden;
+            position: absolute;
+            top: 100%;
+            left: 20px;
+            margin-top: 10px;
+            min-width: 300px;
+        }
+
+        .candidate-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 12px 16px;
+            font-size: 14px;
+            font-weight: 500;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .candidate-pinyin {
+            font-size: 16px;
+            font-weight: 600;
+        }
+
+        .page-info {
+            font-size: 12px;
+            opacity: 0.9;
+        }
+
+        .candidate-list {
+            max-height: 250px;
+            overflow-y: auto;
+        }
+
+        .candidate-item {
+            padding: 12px 16px;
+            display: flex;
+            align-items: center;
+            border-bottom: 1px solid #f0f0f0;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .candidate-item:hover {
+            background: #f5f5f5;
+        }
+
+        .candidate-item.selected {
+            background: #E3F2FD;
+            border-left: 3px solid #2196F3;
+        }
+
+        .candidate-number {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: 600;
+            margin-right: 12px;
+        }
+
+        .candidate-word {
+            font-size: 18px;
+            font-weight: 500;
+            color: #333;
+            margin-right: 12px;
+        }
+
+        .candidate-pinyin-text {
+            font-size: 12px;
+            color: #999;
+            margin-left: auto;
+        }
+
+        .candidate-frequency {
+            background: #FFF3E0;
+            color: #FF9800;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 500;
+            margin-left: 8px;
+        }
+
+        .features {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .feature-card {
+            background: #f9f9f9;
+            padding: 15px;
+            border-radius: 8px;
+            border-left: 3px solid #667eea;
+        }
+
+        .feature-title {
+            font-weight: 600;
+            margin-bottom: 5px;
+            color: #333;
+        }
+
+        .feature-desc {
+            font-size: 13px;
+            color: #666;
+            line-height: 1.5;
+        }
+
+        .status-bar {
+            background: #f5f5f5;
+            border-top: 1px solid #e0e0e0;
+            padding: 10px 20px;
+            display: flex;
+            gap: 20px;
+            font-size: 12px;
+            color: #666;
+            margin-top: 20px;
+            border-radius: 0 0 8px 8px;
+        }
+
+        .status-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            background: #4CAF50;
+            border-radius: 50%;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 20px;
+        }
+
+        .logo-icon {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+        }
+
+        .logo-text {
+            font-size: 20px;
+            font-weight: 700;
+            color: #333;
+        }
+
+        .logo-subtitle {
+            font-size: 12px;
+            color: #999;
+            margin-top: -2px;
+        }
+    </style>
+</head>
+<body>
+    <div class="demo-container">
+        <div class="logo">
+            <div class="logo-icon">🎯</div>
+            <div>
+                <div class="logo-text">Smart Pinyin</div>
+                <div class="logo-subtitle">智能中文输入法 - Ubuntu 版</div>
+            </div>
+        </div>
+
+        <div class="editor" style="position: relative;">
+            <div class="editor-text">
+                今天<span class="composing">zhang</span><span class="input-indicator"></span>
+            </div>
+
+            <div class="candidate-window">
+                <div class="candidate-header">
+                    <span class="candidate-pinyin">zhang</span>
+                    <span class="page-info">1/2页</span>
+                </div>
+                <div class="candidate-list">
+                    <div class="candidate-item selected">
+                        <div class="candidate-number">1</div>
+                        <div class="candidate-word">张</div>
+                        <div class="candidate-pinyin-text">zhāng</div>
+                        <div class="candidate-frequency">高频</div>
+                    </div>
+                    <div class="candidate-item">
+                        <div class="candidate-number">2</div>
+                        <div class="candidate-word">长</div>
+                        <div class="candidate-pinyin-text">cháng</div>
+                        <div class="candidate-frequency">常用</div>
+                    </div>
+                    <div class="candidate-item">
+                        <div class="candidate-number">3</div>
+                        <div class="candidate-word">章</div>
+                        <div class="candidate-pinyin-text">zhāng</div>
+                        <div class="candidate-frequency">常用</div>
+                    </div>
+                    <div class="candidate-item">
+                        <div class="candidate-number">4</div>
+                        <div class="candidate-word">涨</div>
+                        <div class="candidate-pinyin-text">zhǎng</div>
+                        <div class="candidate-frequency">一般</div>
+                    </div>
+                    <div class="candidate-item">
+                        <div class="candidate-number">5</div>
+                        <div class="candidate-word">掌</div>
+                        <div class="candidate-pinyin-text">zhǎng</div>
+                        <div class="candidate-frequency">一般</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="features">
+            <div class="feature-card">
+                <div class="feature-title">🧠 智能推荐</div>
+                <div class="feature-desc">超越谷歌输入法的自适应词频算法</div>
+            </div>
+            <div class="feature-card">
+                <div class="feature-title">🔗 上下文关联</div>
+                <div class="feature-desc">N-gram模型智能联想下一个词</div>
+            </div>
+            <div class="feature-card">
+                <div class="feature-title">⏰ 时间模式</div>
+                <div class="feature-desc">学习使用时间，个性化推荐</div>
+            </div>
+            <div class="feature-card">
+                <div class="feature-title">🛡️ 稳定可靠</div>
+                <div class="feature-desc">用户空间运行，避免系统崩溃</div>
+            </div>
+        </div>
+
+        <div class="status-bar">
+            <div class="status-item">
+                <div class="status-dot"></div>
+                <span>引擎运行中</span>
+            </div>
+            <div class="status-item">
+                <span>总词汇: 1,234</span>
+            </div>
+            <div class="status-item">
+                <span>今日选择: 89次</span>
+            </div>
+            <div class="status-item">
+                <span>上下文: 今天</span>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

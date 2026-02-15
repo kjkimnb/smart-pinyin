@@ -1,10 +1,11 @@
 """
-候选词管理模块
+候选词管理模块（增强版）
+支持分词、多音节智能分词
 负责候选词的生成、排序和管理
 """
 
 from word_database import WordDatabase
-from pinyin_engine import PinyinEngine
+from pinyin_engine_enhanced import PinyinEngineEnhanced
 from config import MAX_CANDIDATES, PAGE_SIZE, FREQUENCY_INCREMENT, FREQUENCY_DECAY
 
 class CandidateManager:
@@ -13,14 +14,15 @@ class CandidateManager:
     def __init__(self, db=None):
         """初始化候选词管理器"""
         self.db = db or WordDatabase()
-        self.pinyin_engine = PinyinEngine()
+        self.pinyin_engine = PinyinEngineEnhanced()
         self.current_pinyin = ""
         self.current_candidates = []
         self.current_page = 0
+        self.is_manual_split = False  # 是否是手动分词
 
     def generate_candidates(self, pinyin_text):
         """
-        生成候选词
+        生成候选词（支持分词和多音节输入）
 
         Args:
             pinyin_text: 拼音输入
@@ -31,21 +33,64 @@ class CandidateManager:
         if not pinyin_text:
             return []
 
-        # 标准化拼音
+        # 标准化拼音（保留分词符）
         normalized = self.pinyin_engine.normalize_pinyin(pinyin_text)
         self.current_pinyin = normalized
 
-        # 从数据库查询候选词
-        candidates = self.db.get_candidates(normalized, limit=MAX_CANDIDATES)
+        # 检查是否手动分词
+        self.is_manual_split = self.pinyin_engine.is_manual_split(pinyin_text)
 
-        # 如果数据库中没有候选词，尝试生成一些
-        if not candidates:
-            candidates = self._generate_fallback_candidates(normalized)
+        # 智能分词
+        pinyin_parts = self.pinyin_engine.smart_split_pinyin(normalized)
+        
+        # 生成候选词组合
+        all_candidates = []
+        
+        if len(pinyin_parts) > 1:
+            # 多音节：生成候选词组合
+            combinations = self.pinyin_engine.generate_candidate_combinations(
+                pinyin_parts, max_words=MAX_CANDIDATES
+            )
+            
+            # 按优先级查询数据库
+            for combo in combinations:
+                combo_pinyin = combo['pinyin']
+                candidates = self.db.get_candidates(combo_pinyin, limit=10)
+                
+                # 添加到总候选词列表
+                for word, freq in candidates:
+                    all_candidates.append((word, freq, combo['length']))
+                    
+                # 如果已经找到足够的候选词，停止查询更短的组合
+                if len(all_candidates) >= MAX_CANDIDATES:
+                    break
+        else:
+            # 单音节或自动分词后的结果
+            candidates = self.db.get_candidates(normalized, limit=MAX_CANDIDATES)
+            for word, freq in candidates:
+                all_candidates.append((word, freq, 1))
 
-        self.current_candidates = candidates
+        # 去重并排序
+        unique_candidates = {}
+        for word, freq, length in all_candidates:
+            if word not in unique_candidates:
+                unique_candidates[word] = (freq, length)
+            else:
+                # 优先保留更长的组合
+                if length > unique_candidates[word][1]:
+                    unique_candidates[word] = (freq, length)
+
+        # 按词频排序，同词频时优先保留更长的组合
+        sorted_candidates = sorted(
+            unique_candidates.items(),
+            key=lambda x: (-x[1][0], -x[1][1])
+        )[:MAX_CANDIDATES]
+
+        # 只返回(word, frequency)，去掉length信息
+        self.current_candidates = [(word, freq) for word, (freq, _) in sorted_candidates]
         self.current_page = 0
 
-        return candidates
+        return self.current_candidates
 
     def _generate_fallback_candidates(self, pinyin_text):
         """
