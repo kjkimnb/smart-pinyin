@@ -1,170 +1,36 @@
-# 中文输入法 - 命令行版
+# Teleoperation Paper Reproduction
 
-一个类似搜狗拼音的智能中文输入法，基于Python开发的命令行版本。
+复现论文 **Chen, Huang, Sun, Song (2018)** *"An Improved Wave-Variable Based Four-Channel Control Design in Bilateral Teleoperation System for Time-Delay Compensation"*, IEEE Access, DOI [10.1109/ACCESS.2018.2805782](https://doi.org/10.1109/ACCESS.2018.2805782).
 
-## 功能特性
+代码在 [`teleoperation/`](teleoperation/) 目录, 三个独立模块:
 
-- ✅ **拼音输入**：支持拼音输入汉字
-- ✅ **候选词显示**：显示多个候选词供选择
-- ✅ **词频学习**：自动调整词频，常用词优先显示
-- ✅ **自定义词汇**：支持添加自定义词汇
-- ✅ **分页显示**：候选词分页显示，方便浏览
-- ✅ **词频统计**：记录用户选择历史，智能排序
+| 文件 | 职责 |
+|---|---|
+| `teleoperation/master.py` | 主端动力学 (论文式 4) + 四通道前向信号 `M1 = C3·Fh + C1·Vm` (式 18) + 基于 BLDC 电流的 Fh 反应力观测器 (RFOB) |
+| `teleoperation/slave.py` | 从端动力学 (论文式 5) + 单边软墙环境 + 四通道反向信号 `N2 = C2·Fe + C4·Vs` (式 19) |
+| `teleoperation/test_teleoperation.py` | 三种通信通道 (NoComp / OriginalWave / ModifiedWave) + 仿真主循环 + 数值自检 + 绘图 |
 
-## 技术栈
+详细说明见 [`teleoperation/README.md`](teleoperation/README.md).
 
-- **Python 3.x**
-- **pypinyin**：拼音转换库
-- **SQLite**：词频数据库存储
-
-## 安装
-
-### 1. 克隆或下载项目
-
-```bash
-cd ~/dev/input-method/
-```
-
-### 2. 安装依赖
+## 快速开始
 
 ```bash
 pip install -r requirements.txt
+
+# 论文主流程: 复现 6 组对比实验 (3 控制器 × 2 时延) + 出图 + self-check
+python -m teleoperation.test_teleoperation
+
+# 仅快速 self-check (5 s 仿真, CI 用)
+python -m teleoperation.test_teleoperation --no-plot --quick
+
+# RFOB (基于 BLDC 电流的 Fh 估计) 自检 demo
+python -m teleoperation.master
 ```
 
-### 3. 运行输入法
+## 复现的论文核心结论
 
-```bash
-python main.py
-```
-
-或直接运行：
-
-```bash
-python cli.py
-```
-
-## 使用说明
-
-### 基本操作
-
-- **输入拼音**：直接输入拼音（如：`wo men`）
-- **选择词汇**：输入数字选择候选词（如：`1`）
-- **提交输出**：输入 `Enter` 或 `.` 提交当前输入
-- **清空输入**：输入 `!` 清空当前输入
-- **退出程序**：输入 `q` 或 `quit` 退出
-
-### 高级功能
-
-- **添加自定义词汇**：输入 `+汉字` 添加新词（如：`+你好`）
-- **翻页浏览**：输入 `<` 上一页，`>` 下一页
-- **退格删除**：输入 `back` 或 `bs` 删除最后的拼音
-
-### 示例
-
-```
->>> wo men
-
-候选词:
-  1. 我们 (词频: 10)
-  2. 卧门 (词频: 1)
-  3. 沃门 (词频: 1)
-
->>> 1
-
-已选: 我们 | 拼音:
-```
-
-## 项目结构
-
-```
-~/dev/input-method/
-├── README.md              # 项目说明文档
-├── requirements.txt       # Python依赖
-├── main.py               # 主入口文件
-├── config.py             # 配置文件
-├── pinyin_engine.py      # 拼音转换引擎
-├── word_database.py      # 词频数据库管理
-├── candidate_manager.py  # 候选词管理
-├── cli.py                # 命令行界面
-└── data/
-    └── input_method.db   # SQLite数据库文件
-```
-
-## 核心模块说明
-
-### 1. pinyin_engine.py
-拼音转换引擎，使用pypinyin库实现中文到拼音的转换。
-
-**主要功能：**
-- 中文转拼音
-- 拼音标准化
-- 模糊匹配
-
-### 2. word_database.py
-词频数据库管理，使用SQLite存储词汇和词频。
-
-**主要功能：**
-- 词汇存储和查询
-- 词频更新和衰减
-- 用户选择历史记录
-- 常用词初始化
-
-### 3. candidate_manager.py
-候选词管理器，负责候选词的生成、排序和管理。
-
-**主要功能：**
-- 候选词生成
-- 词频学习（自动调整优先级）
-- 分页显示
-- 自定义词汇添加
-
-### 4. cli.py
-命令行界面，处理用户交互。
-
-**主要功能：**
-- 用户输入处理
-- 候选词显示
-- 词汇选择
-- 输出结果
-
-## 词频学习机制
-
-输入法采用智能词频学习机制：
-
-1. **初始词频**：每个词汇都有初始词频值
-2. **用户选择**：每次用户选择词汇，该词的词频增加
-3. **自动排序**：候选词按词频降序排列，高频词优先显示
-4. **词频记录**：所有选择记录到数据库，持久化存储
-
-## 扩展功能
-
-### 添加更多常用词
-
-编辑 `word_database.py` 中的 `initialize_common_words()` 方法，添加更多常用词汇。
-
-### 调整配置参数
-
-编辑 `config.py` 修改以下参数：
-- `MAX_CANDIDATES`：最大候选词数量
-- `INITIAL_FREQUENCY`：初始词频
-- `FREQUENCY_INCREMENT`：词频增量
-- `PAGE_SIZE`：分页大小
-
-## 开发者
-
-- 开发时间：2026年
-- 技术栈：Python + pypinyin + SQLite
-- 许可证：MIT License
-
-## 未来改进
-
-- [ ] 支持短语联想
-- [ ] 支持模糊拼音输入
-- [ ] 支持本地词库导入
-- [ ] 支持云同步
-- [ ] 支持表情符号
-- [ ] 支持快捷键配置
-
-## 许可证
-
-MIT License
+| 控制器 | T = 0 | T = 100 ms |
+|---|---|---|
+| **C1** no-comp (Lawrence) | 完美透明 | 接触振荡, 跟踪滞后 |
+| **C2** original wave (Aziminejad) | 完美透明 | **发散** |
+| **C3** modified wave (本文) | 略有相位差 | **稳定有界** |
